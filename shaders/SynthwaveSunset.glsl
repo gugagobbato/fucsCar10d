@@ -18,7 +18,7 @@ uniform int iFrame;
 
 layout(location = 0) out vec4 color;
 
-#define VAPORWAVE
+//#define VAPORWAVE
 #define speed 5.
 #define wave_thing
 
@@ -213,6 +213,12 @@ void main() {
     d=min(d,10.);
     fragColor += vec4(clamp(col,0.,1.),d<0.?0.:.1+exp2(-d));
     fragColor*=float(AA*AA);
+
+    // Até aqui é o fundo. Pra baixo, "começa o carro"
+    vec2 r =  2.0*vec2(gl_FragCoord.xy - 0.5*iResolution.xy)/iResolution.y;
+    vec4 col1 = vec4(0.216, 0.471, 0.698, 1.0); // blue
+    float ret = 1.0 - ( step(-0.55, r.x) * (1.0 - step(0.55, r.x)) ) * ( 1.0 - step(-0.3, r.y) );
+    fragColor = ret == 0 ? col1 : fragColor; // make a color out of return value.
 }
 
 /** SHADERDATA
