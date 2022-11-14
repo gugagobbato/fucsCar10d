@@ -14,8 +14,8 @@ bool lbutton_down = false;
 
 std::string TITULO = "Projeto 2 - Carro em Movimento";
 
-//std::string SHADER = "../shaders/SynthwaveSunset.glsl";
-std::string SHADER = "../shaders/CyberFuji.glsl";
+std::string SHADER = "../shaders/SynthwaveSunset.glsl";
+//std::string SHADER = "../shaders/CyberFuji.glsl";
 
 GLint u_time;
 GLint u_resolution;
@@ -217,8 +217,8 @@ int main() {
     glCall( glBindVertexArray(0) );
 
     // Carrega a textura
-    //loadTexture("res/images/gremio.jpg",0);
-    loadTexture("res/images/gremio.png",0,PNG);
+    //loadTexture("res/images/gremio.jpg", 0); // SLOT 0
+    loadTexture("res/images/ucs.png", 1 ,PNG); //SLOT 1.
 
     // Invoca o shader
     glCall(glUseProgram(shader));
@@ -236,7 +236,6 @@ int main() {
 //    glCall( glEnable(GL_BLEND) );
 //    glCall( glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) );
 
-
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -249,7 +248,6 @@ int main() {
 
         glUniform3f(u_resolution, (GLfloat) LARGURA, (GLfloat) ALTURA, 0);
         glUniform1f(u_time, (float) glfwGetTime());
-
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);

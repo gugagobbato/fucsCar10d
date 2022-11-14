@@ -18,7 +18,7 @@ uniform int iFrame;
 
 layout(location = 0) out vec4 color;
 
-//#define VAPORWAVE
+#define VAPORWAVE
 #define speed 5.
 #define wave_thing
 
@@ -43,12 +43,15 @@ float pow512(float a){
     a*=a;//^256
     return a*a;
 }
+
 float pow1d5(float a){
     return a*sqrt(a);
 }
+
 float hash21(vec2 co){
     return fract(sin(dot(co.xy,vec2(1.9898,7.233)))*45758.5433);
 }
+
 float hash(vec2 uv){
     float a = amp(uv);
     #ifdef wave_thing
@@ -86,13 +89,11 @@ vec2 trinoise(vec2 uv){
     float n2 = hash(uv+vec2(1,0));
     float n3 = hash(uv+vec2(0,1));
 
-
     float nmid = mix(n2,n3,d.y);
     float ns = mix(nn,c?n2:n3,da.y);
     float dx = da.x/db.y;
     return vec2(mix(ns,nmid,dx),edgeMin(dx,da, db,uv+d));
 }
-
 
 vec2 map(vec3 p){
     vec2 n = trinoise(p.xz);
@@ -103,29 +104,27 @@ vec3 grad(vec3 p){
     const vec2 e = vec2(.005,0);
     float a =map(p).x;
     return vec3(map(p+e.xyy).x-a
-    ,map(p+e.yxy).x-a
-    ,map(p+e.yyx).x-a)/e.x;
+                ,map(p+e.yxy).x-a
+                ,map(p+e.yyx).x-a)/e.x;
 }
 
 vec2 intersect(vec3 ro,vec3 rd){
     float d =0.,h=0.;
-    for(int i = 0;i<500;i++){ //look nice with 50 iterations
+    for(int i = 0;i<100;i++){
         vec3 p = ro+d*rd;
         vec2 s = map(p);
         h = s.x;
         d+= h*.5;
         if(abs(h)<.003*d)
-        return vec2(d,s.y);
+            return vec2(d,s.y);
         if(d>150.|| p.y>2.) break;
     }
 
     return vec2(-1);
 }
 
-
 void addsun(vec3 rd,vec3 ld,inout vec3 col){
-
-    float sun = smoothstep(.21,.2,distance(rd,ld));
+	float sun = smoothstep(.21,.2,distance(rd,ld));
 
     if(sun>0.){
         float yd = (rd.y-ld.y);
@@ -138,6 +137,29 @@ void addsun(vec3 rd,vec3 ld,inout vec3 col){
     }
 }
 
+float dot2(in vec2 v ) { return dot(v,v); }
+
+float carVector( in vec2 p, in float r1, float r2, float he )
+{
+    vec2 k1 = vec2(r2,he);
+    vec2 k2 = vec2(r2-r1,.9*he);
+    p.x = abs(p.x);
+    vec2 ca = vec2(p.x-min(p.x,(p.y<0.0)?r1:r2), abs(p.y)-he);
+    vec2 cb = p - k1 + k2*clamp( dot(k1-p-1.0,k2)/dot2(k2), 0.0, 1.0 );//dot-1.0
+    float s = (cb.x<0.0 && ca.y<0.0) ? -1.0 : 1.0;
+    return s*sqrt( min(dot2(ca),dot2(cb)) );
+}
+
+float carPiecesVector( in vec2 p, in float r1, float r2, float he )
+{
+    vec2 k1 = vec2(r2,he);
+    vec2 k2 = vec2(r2-r1,.9*he);
+    p.x = abs(p.x);
+    vec2 ca = vec2(p.x-min(p.x,(p.y<0.0) ? r1:r2), abs(p.y)-he);
+    vec2 cb = p - k1 + k2+clamp( dot(k1,k2)/dot2(k2), 0.0, 1.0 );
+    float s = (cb.x<0.0 && ca.y<0.0) ? -1.0 : 1.0;
+    return s*sqrt( min(dot2(ca),dot2(cb)) );
+}
 
 float starnoise(vec3 rd){
     float c = 0.;
@@ -159,26 +181,34 @@ float starnoise(vec3 rd){
 
 vec3 gsky(vec3 rd,vec3 ld,bool mask){
     float haze = exp2(-5.*(abs(rd.y)-.2*dot(rd,ld)));
-    float st = mask?pow512(hash21((rd.xy+vec2(300.1,100)*rd.z)*10.))*(1.-min(haze,1.)):0.;
-//    float st = mask?(starnoise(rd))*(1.-min(haze,1.)):0.;
-    vec3 col=clamp(mix(vec3(.4,.1,.7)*(1.-.5*textureMirror(iChannel0,vec2(.5+.05*rd.x/rd.y,0.)).x*exp2(-.1*abs(length(rd.xz)/rd.y))*max(sign(rd.y),0.)),
-    vec3(.7,.1,.4),haze)+st,0.,1.);
+    //float st = mask?pow512(texture(iChannel0,(rd.xy+vec2(300.1,100)*rd.z)*10.).r)*(1.-min(haze,1.)):0.;
+    //float st = mask?pow512(hash21((rd.xy+vec2(300.1,100)*rd.z)*10.))*(1.-min(haze,1.)):0.;
+    float st = mask?(starnoise(rd))*(1.-min(haze,1.)):0.;
+    vec3 col=clamp(mix(vec3(.4,.1,.7)*(1.-.5*textureMirror(iChannel0,
+                    vec2(.5+.05*rd.x/rd.y,0.)).x*exp2(-.1*abs(length(rd.xz)/rd.y))*max(sign(rd.y),0.)),
+                    vec3(.7,.1,.4),haze)+st,0.,1.);
     if(mask)addsun(rd,ld,col);
-    return col;
+    return col;  
 }
 
-
 void main() {
-    fragColor=vec4(0);
-
     const float AA=1.,x=0.,y=0.;
-    vec2 uv = (2.*(gl_FragCoord.xy+vec2(x,y))-iResolution.xy)/iResolution.y;
+    float dt = fract(hash21(float(AA)*(fragCoord+vec2(x,y)))+iTime);
+    //float dt = fract(texture(iChannel0,float(AA)*(fragCoord+vec2(x,y))/iChannelResolution[0].xy).r+iTime);
 
-    float dt = fract(hash21(float(AA)*(gl_FragCoord.xy+vec2(x,y)))+iTime);
+    float carVector = carVector( uv  + vec2(uv.x * 2.4, 1.0), 1.3, 0.8, 0.3); //pow(uv.y * uv.y, 2.1)
+    float backSign = carPiecesVector( uv  + vec2(uv.x * 4.4, 1.0), 0.0, 0.8, 0.18); //pow(uv.y * uv.y, 2.1)
+    float backGlass = carPiecesVector( uv  + vec2(uv.x * 2.4, 1.0), 0.0, 0.8, 0.45); //pow(uv.y * uv.y, 2.1)
+    float backLightLeft = carPiecesVector( uv  + vec2(-1.5+uv.x * 3.2, 1.0), 0.0, 0.1, 0.15); //pow(uv.y * uv.y, 2.1)
+    float backLightRight = carPiecesVector( uv  + vec2(+1.5+uv.x * 3.2, 1.0), 0.0, 0.1, 0.15); //pow(uv.y * uv.y, 2.1)
+
+    fragColor=vec4(0);
     jTime = mod(iTime-dt*iTimeDelta*.25,4000.);
+    
+    vec2 uv = (2.*(fragCoord+vec2(x,y))-iResolution.xy)/iResolution.y;
     vec3 ro = vec3(0.,1,(-20000.+jTime*speed));
 
-    vec3 rd = normalize(vec3(uv,4./3.));//vec3(uv,sqrt(1.-dot(uv,uv)));
+    vec3 rd = normalize(vec3(uv,4./3.));//olho de peixe: vec3(uv,sqrt(1.-dot(uv,uv)));
 
     vec2 i = intersect(ro,rd);
     float d = i.x;
@@ -193,38 +223,22 @@ void main() {
 
     float diff = dot(n,ld)+.1*n.y;
     vec3 col = vec3(.1,.11,.18)*diff;
+    vec3 col1 = vec3(3.01,3.01,.18)*diff;
+    vec3 col2 = vec3(12.11,1.11,2.18)*diff;
+    vec3 bufferUCS = texture(iChannel1, uv).rgb;
 
     vec3 rfd = reflect(rd,n);
     vec3 rfcol = gsky(rfd,ld,true);
 
-    col = mix(col,rfcol,.05+.95*pow(max(1.+dot(rd,n),0.),5.));
-    #ifdef VAPORWAVE
-    col = mix(col,vec3(.4,.5,1.),smoothstep(.05,.0,i.y));
-    col = mix(sky,col,fog);
-    col = sqrt(col);
-    #else
     col = mix(col,vec3(.8,.1,.92),smoothstep(.05,.0,i.y));
+
+    col = mix(sky,col,step(0.3, carVector));
+    col = mix(bufferUCS,col,step(0.1, backSign));
+    col = mix(col1,col,step(0.1, backGlass));
+    col = mix(col2,col,step(0.1, backLightLeft));
+    col = mix(col2,col,step(0.1, backLightRight));
+    
     col = mix(sky,col,fog);
-    //no gamma for that old cg look
-    #endif
 
-    if(d<0.)
-    d=1e6;
-    d=min(d,10.);
     fragColor += vec4(clamp(col,0.,1.),d<0.?0.:.1+exp2(-d));
-    fragColor*=float(AA*AA);
-
-    // Até aqui é o fundo. Pra baixo, "começa o carro"
-    vec2 r =  2.0*vec2(gl_FragCoord.xy - 0.5*iResolution.xy)/iResolution.y;
-    vec4 col1 = vec4(0.216, 0.471, 0.698, 1.0); // blue
-    float ret = 1.0 - ( step(-0.55, r.x) * (1.0 - step(0.55, r.x)) ) * ( 1.0 - step(-0.3, r.y) );
-    fragColor = ret == 0 ? col1 : fragColor; // make a color out of return value.
 }
-
-/** SHADERDATA
-{
-	"title": "another synthwave sunset thing",
-	"description": "I was thinking of a way to make pseudo tesselation noise and i made this to illustrate it, i might not be the first one to come up with this solution.",
-	"model": "car"
-}
-*/
