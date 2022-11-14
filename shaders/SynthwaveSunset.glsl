@@ -104,7 +104,7 @@ vec3 grad(vec3 p){
     const vec2 e = vec2(.005,0);
     float a =map(p).x;
     return vec3(map(p+e.xyy).x-a
-    ,map(p+e.yyx).x-a)/e.x;
+                ,map(p+e.yxy).x-a
                 ,map(p+e.yyx).x-a)/e.x;
 }
 
@@ -194,6 +194,7 @@ vec3 gsky(vec3 rd,vec3 ld,bool mask){
 void main() {
     const float AA=1.,x=0.,y=0.;
     float dt = fract(hash21(float(AA)*(fragCoord+vec2(x,y)))+iTime);
+    //float dt = fract(texture(iChannel0,float(AA)*(fragCoord+vec2(x,y))/iChannelResolution[0].xy).r+iTime);
 
     float carVector = carVector( uv  + vec2(uv.x * 2.4, 1.0), 1.3, 0.8, 0.3); //pow(uv.y * uv.y, 2.1)
     float backSign = carPiecesVector( uv  + vec2(uv.x * 4.4, 1.0), 0.0, 0.8, 0.18); //pow(uv.y * uv.y, 2.1)
@@ -224,7 +225,7 @@ void main() {
     vec3 col = vec3(.1,.11,.18)*diff;
     vec3 col1 = vec3(3.01,3.01,.18)*diff;
     vec3 col2 = vec3(12.11,1.11,2.18)*diff;
-    vec3 bufferUCS = texture(iChannel0, uv).rgb;
+    vec3 bufferUCS = texture(iChannel1, uv).rgb;
 
     vec3 rfd = reflect(rd,n);
     vec3 rfcol = gsky(rfd,ld,true);
