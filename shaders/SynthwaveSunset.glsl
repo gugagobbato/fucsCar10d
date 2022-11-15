@@ -9,7 +9,7 @@ precision mediump float;
 uniform vec3      iResolution;           // viewport resolution (in pixels)
 uniform float     iTime;                 // shader playback time (in seconds)
 uniform float     iTimeDelta;            // render time (in seconds)
-uniform vec4 iMouse;
+uniform vec4      iMouse;
 uniform sampler2D iChannel0;
 uniform sampler2D iChannel1;
 uniform sampler2D iChannel2;
@@ -21,6 +21,9 @@ layout(location = 0) out vec4 color;
 #define VAPORWAVE
 #define speed 5.
 #define wave_thing
+
+
+// Funções pra desenhar o fundo, pegadas em https://www.shadertoy.com/view/tsScRK
 
 vec4 textureMirror(sampler2D tex, vec2 c){
     return vec4(0);
@@ -110,7 +113,7 @@ vec3 grad(vec3 p){
 
 vec2 intersect(vec3 ro,vec3 rd){
     float d =0.,h=0.;
-    for(int i = 0;i<100;i++){
+    for(int i = 0;i<300;i++){
         vec3 p = ro+d*rd;
         vec2 s = map(p);
         h = s.x;
@@ -137,6 +140,36 @@ void addsun(vec3 rd,vec3 ld,inout vec3 col){
     }
 }
 
+float starnoise(vec3 rd){
+    float c = 0.;
+    vec3 p = normalize(rd)*300.;
+    for (float i=0.;i<4.;i++)
+    {
+        vec3 q = fract(p)-.5;
+        vec3 id = floor(p);
+        float c2 = smoothstep(.5,0.,length(q));
+        c2 *= step(hash21(id.xz/id.y),.06-i*i*0.005);
+        c += c2;
+        p = p*.6+.5*p*mat3(3./5.,0,4./5.,0,1,0,-4./5.,0,3./5.);
+    }
+    c*=c;
+    float g = dot(sin(rd*10.512),cos(rd.yzx*10.512));
+    c*=smoothstep(-3.14,-.9,g)*.5+.5*smoothstep(-.3,1.,g);
+    return c*c;
+}
+
+vec3 gsky(vec3 rd,vec3 ld,bool mask){
+    float haze = exp2(-5.*(abs(rd.y)-.2*dot(rd,ld)));
+    float st = mask?(starnoise(rd))*(1.-min(haze,1.)):0.;
+    vec3 col=clamp(mix(vec3(.4,.1,.7)*(1.-.5*textureMirror(iChannel0,
+                    vec2(.5+.05*rd.x/rd.y,0.)).x*exp2(-.1*abs(length(rd.xz)/rd.y))*max(sign(rd.y),0.)),
+                    vec3(.7,.1,.4),haze)+st,0.,1.);
+    if(mask)addsun(rd,ld,col);
+    return col;  
+}
+
+// Funções pra desenhar o carro
+
 float dot2(in vec2 v ) { return dot(v,v); }
 
 float carVector( in vec2 p, in float r1, float r2, float he )
@@ -161,54 +194,23 @@ float carPiecesVector( in vec2 p, in float r1, float r2, float he )
     return s*sqrt( min(dot2(ca),dot2(cb)) );
 }
 
-float starnoise(vec3 rd){
-    float c = 0.;
-    vec3 p = normalize(rd)*300.;
-    for (float i=0.;i<4.;i++)
-    {
-        vec3 q = fract(p)-.5;
-        vec3 id = floor(p);
-        float c2 = smoothstep(.5,0.,length(q));
-        c2 *= step(hash21(id.xz/id.y),.06-i*i*0.005);
-        c += c2;
-        p = p*.6+.5*p*mat3(3./5.,0,4./5.,0,1,0,-4./5.,0,3./5.);
-    }
-    c*=c;
-    float g = dot(sin(rd*10.512),cos(rd.yzx*10.512));
-    c*=smoothstep(-3.14,-.9,g)*.5+.5*smoothstep(-.3,1.,g);
-    return c*c;
-}
-
-vec3 gsky(vec3 rd,vec3 ld,bool mask){
-    float haze = exp2(-5.*(abs(rd.y)-.2*dot(rd,ld)));
-    //float st = mask?pow512(texture(iChannel0,(rd.xy+vec2(300.1,100)*rd.z)*10.).r)*(1.-min(haze,1.)):0.;
-    //float st = mask?pow512(hash21((rd.xy+vec2(300.1,100)*rd.z)*10.))*(1.-min(haze,1.)):0.;
-    float st = mask?(starnoise(rd))*(1.-min(haze,1.)):0.;
-    vec3 col=clamp(mix(vec3(.4,.1,.7)*(1.-.5*textureMirror(iChannel0,
-                    vec2(.5+.05*rd.x/rd.y,0.)).x*exp2(-.1*abs(length(rd.xz)/rd.y))*max(sign(rd.y),0.)),
-                    vec3(.7,.1,.4),haze)+st,0.,1.);
-    if(mask)addsun(rd,ld,col);
-    return col;  
-}
-
 void main() {
     const float AA=1.,x=0.,y=0.;
-    float dt = fract(hash21(float(AA)*(fragCoord+vec2(x,y)))+iTime);
-    //float dt = fract(texture(iChannel0,float(AA)*(fragCoord+vec2(x,y))/iChannelResolution[0].xy).r+iTime);
+    float dt = fract(hash21(float(AA)*(gl_FragCoord.xy+vec2(x,y)))+iTime);
+    vec2 uv = (2.*(gl_FragCoord.xy+vec2(x,y))-iResolution.xy)/iResolution.y;
 
-    float carVector = carVector( uv  + vec2(uv.x * 2.4, 1.0), 1.3, 0.8, 0.3); //pow(uv.y * uv.y, 2.1)
-    float backSign = carPiecesVector( uv  + vec2(uv.x * 4.4, 1.0), 0.0, 0.8, 0.18); //pow(uv.y * uv.y, 2.1)
-    float backGlass = carPiecesVector( uv  + vec2(uv.x * 2.4, 1.0), 0.0, 0.8, 0.45); //pow(uv.y * uv.y, 2.1)
-    float backLightLeft = carPiecesVector( uv  + vec2(-1.5+uv.x * 3.2, 1.0), 0.0, 0.1, 0.15); //pow(uv.y * uv.y, 2.1)
-    float backLightRight = carPiecesVector( uv  + vec2(+1.5+uv.x * 3.2, 1.0), 0.0, 0.1, 0.15); //pow(uv.y * uv.y, 2.1)
+    float carVector = carVector( uv + vec2(uv.x * 2.4, 1.0), 1.3, 0.8, 0.3);
+    float backSign = carPiecesVector( uv + vec2(uv.x * 4.4, 1.0), 0.0, 0.8, 0.18);
+    float backGlass = carPiecesVector( uv + vec2(uv.x * 2.4, 1.0), 0.0, 0.8, 0.45);
+    float backLightLeft = carPiecesVector( uv + vec2(-1.5+uv.x * 3.2, 1.0), 0.0, 0.1, 0.15);
+    float backLightRight = carPiecesVector( uv + vec2(+1.5+uv.x * 3.2, 1.0), 0.0, 0.1, 0.15);
 
     fragColor=vec4(0);
     jTime = mod(iTime-dt*iTimeDelta*.25,4000.);
-    
-    vec2 uv = (2.*(fragCoord+vec2(x,y))-iResolution.xy)/iResolution.y;
+
     vec3 ro = vec3(0.,1,(-20000.+jTime*speed));
 
-    vec3 rd = normalize(vec3(uv,4./3.));//olho de peixe: vec3(uv,sqrt(1.-dot(uv,uv)));
+    vec3 rd = normalize(vec3(uv,4./3.));
 
     vec2 i = intersect(ro,rd);
     float d = i.x;
@@ -225,10 +227,7 @@ void main() {
     vec3 col = vec3(.1,.11,.18)*diff;
     vec3 col1 = vec3(3.01,3.01,.18)*diff;
     vec3 col2 = vec3(12.11,1.11,2.18)*diff;
-    vec3 bufferUCS = texture(iChannel1, uv).rgb;
-
-    vec3 rfd = reflect(rd,n);
-    vec3 rfcol = gsky(rfd,ld,true);
+    vec3 bufferUCS = texture(iChannel1, (uv + vec2(0.295, 0.82)) * 3.4 - 0.5).rgb;
 
     col = mix(col,vec3(.8,.1,.92),smoothstep(.05,.0,i.y));
 

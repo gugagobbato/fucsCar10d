@@ -15,7 +15,7 @@ bool lbutton_down = false;
 std::string TITULO = "Projeto 2 - Carro em Movimento";
 
 std::string SHADER = "../shaders/SynthwaveSunset.glsl";
-//std::string SHADER = "../shaders/CyberFuji.glsl";
+//std::string SHADER = "../shaders/tutorial.glsl";
 
 GLint u_time;
 GLint u_resolution;
@@ -38,7 +38,7 @@ static void loadTexture(const std::string& path, unsigned int slot, int tipo)
 
     // Corrige o alinhamento da imagem em imagens cujas dimensões não são potências de dois
     // NPOT (Not Power-of-Two)
-    //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     if(tipo == PNG)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_LocalBuffer);
@@ -47,8 +47,8 @@ static void loadTexture(const std::string& path, unsigned int slot, int tipo)
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRROR_CLAMP_TO_EDGE);
 
     glCall(glActiveTexture(GL_TEXTURE0 + slot));
 
@@ -69,7 +69,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 void showMousePosition(GLFWwindow * window, double x, double y)
 {
     std::stringstream ss;
-    ss << TITULO << " X: " << x << " Y: " << y;
+    ss << TITULO << " X: " << x/LARGURA << " Y: " << 1.0 - y/ALTURA;
     glfwSetWindowTitle(window, ss.str().c_str());
 }
 
@@ -217,8 +217,8 @@ int main() {
     glCall( glBindVertexArray(0) );
 
     // Carrega a textura
-    //loadTexture("res/images/gremio.jpg", 0); // SLOT 0
-    loadTexture("res/images/ucs.png", 1 ,PNG); //SLOT 1.
+//    loadTexture("../res/images/gremio.png", 1, PNG); // SLOT 0
+    loadTexture("../res/images/ucs.png", 1 ,PNG); //SLOT 1.
 
     // Invoca o shader
     glCall(glUseProgram(shader));
@@ -236,6 +236,7 @@ int main() {
 //    glCall( glEnable(GL_BLEND) );
 //    glCall( glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) );
 
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -248,6 +249,7 @@ int main() {
 
         glUniform3f(u_resolution, (GLfloat) LARGURA, (GLfloat) ALTURA, 0);
         glUniform1f(u_time, (float) glfwGetTime());
+
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
