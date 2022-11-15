@@ -28,7 +28,7 @@ Please fix my coding errors and grammar errors. :-)
 */
 
 // choose the tutorial by changing the number and compiling the shader again
-#define TUTORIAL 2
+#define TUTORIAL 17
 
 /* TUTORIAL LIST
  1 VOID. BLANK SCREEN.
@@ -64,7 +64,7 @@ Please fix my coding errors and grammar errors. :-)
 #define PI 3.14159265359
 #define TWOPI 6.28318530718
 
-#if TUTORIAL == 1
+#if TUTORIAL == 26
 // VOID. BLANK SCREEN.
 //
 // "main" function is called several times per second to produce
@@ -139,7 +139,7 @@ void main()
 //void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     // play with these numbers:
-    float redAmount = 0.6; // amount of redness
+    float redAmount = 0.2; // amount of redness
     float greenAmount = 0.2; // amount of greenness
     float blueAmount = 0.9; // amount of blueness
 
@@ -195,7 +195,7 @@ void main()
 
     // if the x coordinate is greater than 100 then plot color1
     // else plot color2
-    float widthOfStrip = 100.0;
+    float widthOfStrip = 300.0;
     if( gl_FragCoord.x > widthOfStrip ) {
         pixel = color2;
     } else {
@@ -1568,7 +1568,7 @@ void main()
         sin(angle),  cos(angle));
         vec2 q = rotMat*r;
         vec3 texA = texture(iChannel1, q).xyz;
-        vec3 texB = texture(iChannel2, q).xyz;
+//        vec3 texB = texture(iChannel2, q).xyz;
 
         angle = -iTime;
         rotMat = mat2(cos(angle), -sin(angle),
